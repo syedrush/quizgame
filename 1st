@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Game</title>
+<style>
+  body { font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px; }
+  h1 { text-align: center; }
+  .quiz-container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+  .question { font-weight: bold; }
+  button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+  #start-btn { display: block; margin: 20px auto; }
+  #score { font-weight: bold; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<h1>🎮 Quiz Game</h1>
+<div class="quiz-container">
+  <div id="intro">
+    <p>Enter your name:</p>
+    <input type="text" id="username" placeholder="Your Name">
+    <p>Choose your level:</p>
+    <select id="level">
+      <option value="1">Easy</option>
+      <option value="2">Medium</option>
+      <option value="3">Hard</option>
+    </select>
+    <p>Number of questions:</p>
+    <input type="number" id="numQuestions" value="5" min="1" max="12">
+    <button id="start-btn">Start Quiz</button>
+  </div>
+
+  <div id="quiz" style="display:none;">
+    <p class="question" id="questionText"></p>
+    <div id="options"></div>
+    <p id="timer"></p>
+  </div>
+
+  <div id="result" style="display:none;">
+    <p id="score"></p>
+    <p id="percentage"></p>
+  </div>
+</div>
+
+<script>
+// ------------------ Questions -------------------
+const techQuestions = [
+  {q:"What is the correct syntax to print in C?", options:["print()","printf()","println()","System.out.print()"], answer:"printf()", category:"Technical"},
+  {q:"Which keyword is used to declare a constant in C?", options:["const","let","final","define"], answer:"const", category:"Technical"},
+  {q:"C language was developed by?", options:["Bjarne Stroustrup","James Gosling","Dennis Ritchie","Tim Berners-Lee"], answer:"Dennis Ritchie", category:"Technical"},
+  {q:"Which of the following is a valid variable in C?", options:["2value","int","_value","None"], answer:"_value", category:"Technical"}
+];
+
+const aptitudeQuestions = [
+  {q:"What is 25% of 200?", options:["25","50","100","75"], answer:"50", category:"Aptitude"},
+  {q:"If 5x = 20, what is x?", options:["2","3","4","5"], answer:"4", category:"Aptitude"},
+  {q:"Next number: 2,4,8,16, ?", options:["18","24","32","20"], answer:"32", category:"Aptitude"},
+  {q:"If a car travels 60 km in 1.5 hours, speed?", options:["40","30","50","45"], answer:"40", category:"Aptitude"}
+];
+
+const verbalQuestions = [
+  {q:"Choose the synonym of 'Happy':", options:["Sad","Angry","Joyful","Tired"], answer:"Joyful", category:"Verbal"},
+  {q:"Choose the antonym of 'Big':", options:["Huge","Large","Small","Giant"], answer:"Small", category:"Verbal"},
+  {q:"He ___ to school every day.", options:["go","goes","going","gone"], answer:"goes", category:"Verbal"},
+  {q:"Select the correctly spelled word:", options:["Recieve","Receive","Recive","Receeve"], answer:"Receive", category:"Verbal"}
+];
+
+const bonusQuestions = [
+  {q:"FUN: What has hands but can’t clap?", options:["Clock","Monkey","Fan","Chair"], answer:"Clock", category:"Bonus"},
+  {q:"FUN: What comes once in a minute, twice in a moment but never in a thousand years?", options:["M","E","Time","Hour"], answer:"M", category:"Bonus"},
+  {q:"FUN: What has to be broken before you can use it?", options:["Egg","Phone","Window","Pencil"], answer:"Egg", category:"Bonus"}
+];
+
+// ------------------ Quiz Logic -------------------
+let quizQuestions = [];
+let currentQ = 0;
+let score = 0;
+let correctCount = 0;
+let timerInterval;
+
+document.getElementById('start-btn').onclick = () => {
+  const username = document.getElementById('username').value || "Player";
+  const level = parseInt(document.getElementById('level').value);
+  let numQuestions = parseInt(document.getElementById('numQuestions').value);
+  if(numQuestions>12) numQuestions=12;
+  if(numQuestions<1) numQuestions=5;
+
+  // Build pool
+  quizQuestions = [];
+  if(level===1){ quizQuestions = [...aptitudeQuestions,...verbalQuestions]; }
+  else if(level===2){ quizQuestions = [...techQuestions,...aptitudeQuestions,...verbalQuestions]; }
+  else { quizQuestions = [...techQuestions,...aptitudeQuestions.slice(0,2)]; }
+
+  // Shuffle
+  quizQuestions.sort(()=>Math.random()-0.5);
+  quizQuestions = quizQuestions.slice(0,numQuestions);
+
+  document.getElementById('intro').style.display='none';
+  document.getElementById('quiz').style.display='block';
+  nextQuestion();
+};
+
+function nextQuestion(){
+  if(currentQ >= quizQuestions.length){
+    showResult();
+    return;
+  }
+
+  const q = quizQuestions[currentQ];
+  document.getElementById('questionText').innerText = `Q${currentQ+1}: ${q.q} (${q.category})`;
+  const optionsDiv = document.getElementById('options');
+  optionsDiv.innerHTML = "";
+  q.options.forEach(opt=>{
+    const btn = document.createElement('button');
+    btn.innerText = opt;
+    btn.onclick = ()=>checkAnswer(opt);
+    optionsDiv.appendChild(btn);
+  });
+
+  // Timer
+  let timeLeft = 45;
+  document.getElementById('timer').innerText = `⏱️ Time left: ${timeLeft}s`;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    document.getElementById('timer').innerText = `⏱️ Time left: ${timeLeft}s`;
+    if(timeLeft<=0){ clearInterval(timerInterval); checkAnswer(null); }
+  },1000);
+}
+
+function checkAnswer(ans){
+  clearInterval(timerInterval);
+  const correct = quizQuestions[currentQ].answer;
+  if(ans===correct){ score+=5; correctCount++; alert("✅ Correct!"); }
+  else alert(`❌ Wrong! Correct answer: ${correct}`);
+
+  // Bonus
+  if(correctCount>0 && correctCount%3===0 && (correctCount/3 -1)<bonusQuestions.length){
+    const bq = bonusQuestions[(correctCount/3)-1];
+    const bAns = prompt(`🎁 Bonus Question (${bq.category}): ${bq.q}\nOptions: ${bq.options.join(", ")}`);
+    if(bAns && bAns.trim().toLowerCase()===bq.answer.toLowerCase()){ score+=5; alert("🎉 Correct Bonus!"); }
+    else alert(`😅 Incorrect Bonus. Correct: ${bq.answer}`);
+  }
+
+  currentQ++;
+  nextQuestion();
+}
+
+function showResult(){
+  document.getElementById('quiz').style.display='none';
+  document.getElementById('result').style.display='block';
+  document.getElementById('score').innerText = `📊 Final Score: ${score}`;
+  const perc = (score/(quizQuestions.length*5))*100;
+  document.getElementById('percentage').innerText = `📈 Percentage: ${perc.toFixed(2)}%`;
+}
+</script>
+
+</body>
+</html>
